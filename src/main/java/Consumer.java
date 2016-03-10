@@ -35,24 +35,20 @@ public class Consumer implements Watcher, Runnable {
                 _log.error("Consumer process throw Exception: " + e.getMessage());
             }
         }
-//        else if(watchedEvent.getType() == Event.EventType.None && watchedEvent.getState() == Event.KeeperState.Expired){
-//            return;
-//        }
     }
 
 
     public void run() {
         try {
             while (true) {
-
-                    List<String> children = getChildren();
-                   if (remove && children.size() > 0){
-                        for (String s : children) {
-                            _log.info("Consume task: " + s + " data: " + new String(_zookeeperClient.getData("/tasks/" + s, false, null)));
-                            _zookeeperClient.delete("/tasks/" + s, 0);
-                            Thread.sleep(1000);
-                        }
+                List<String> children = getChildren();
+                if (remove && children.size() > 0) {
+                    for (String s : children) {
+                        _log.info("Consume task: " + s + " data: " + new String(_zookeeperClient.getData("/tasks/" + s, false, null)));
+                        _zookeeperClient.delete("/tasks/" + s, 0);
+                        Thread.sleep(1000);
                     }
+                }
             }
         } catch (Exception e) {
             _log.error("Consumer run() throw Exception: " + e.getMessage());

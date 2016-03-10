@@ -37,14 +37,14 @@ public class Producer implements Watcher {
                 CreateMode.PERSISTENT_SEQUENTIAL, createResponseHandler, "CreateTask");
     }
 
-    private boolean isEgzists() throws Exception {
+    private boolean isExists() throws Exception {
         return _zookeeperClient.exists("/goAhead", true) != null;
     }
 
     public void run() throws Exception {
         int counter = 0;
         while (true) {
-            if(isEgzists()) {
+            if(isExists()) {
                 this.createNodeASyncCall("job_" + counter++);
             }else{
                 _log.info("/goAhead node no exists");
