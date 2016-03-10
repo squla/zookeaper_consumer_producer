@@ -1,8 +1,5 @@
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.Shell;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.*;
 
 import java.util.List;
 
@@ -13,14 +10,13 @@ public class Consumer implements Watcher, Runnable {
     private Logger _log = Logger.getLogger(Consumer.class);
     private ZooKeeper _zookeeperClient;
     private Boolean remove;
-    private Integer mutex = 1;
 
     public Consumer() throws Exception {
         _zookeeperClient = new ZooKeeper("localhost:2181", 3000, this);
-        remove = true;
+        remove = false;
     }
 
-    public Consumer(Boolean remove) throws Exception{
+    public Consumer(Boolean remove) throws Exception {
         this();
         this.remove = remove;
     }
@@ -31,7 +27,6 @@ public class Consumer implements Watcher, Runnable {
     }
 
 
-
     public void process(WatchedEvent watchedEvent) {
         if (watchedEvent.getType() == Event.EventType.NodeChildrenChanged) {
             try {
@@ -39,39 +34,45 @@ public class Consumer implements Watcher, Runnable {
             } catch (Exception e) {
                 _log.error("Consumer process throw Exception: " + e.getMessage());
             }
-            synchronized (mutex) {
-                if(remove) {
-                    mutex.notify();
-                }
-            }
         }
+//        else if(watchedEvent.getType() == Event.EventType.None && watchedEvent.getState() == Event.KeeperState.Expired){
+//            return;
+//        }
     }
 
 
     public void run() {
         try {
             while (true) {
-                synchronized (mutex) {
+
                     List<String> children = getChildren();
-                    if (children.size() == 0) {
-                        mutex.wait();
-                    } else {
+                   if (remove && children.size() > 0){
                         for (String s : children) {
                             _log.info("Consume task: " + s + " data: " + new String(_zookeeperClient.getData("/tasks/" + s, false, null)));
                             _zookeeperClient.delete("/tasks/" + s, 0);
                             Thread.sleep(1000);
                         }
                     }
-                }
             }
         } catch (Exception e) {
             _log.error("Consumer run() throw Exception: " + e.getMessage());
         }
     }
 
+//    public void run(){
+//        while (true){
+//            try {
+//                getChildren();
+//                Thread.sleep(1000);
+//            }catch (Exception e){
+//
+//            }
+//        }
+//    }
+
 
     public static void main(String args[]) throws Exception {
-        Consumer consumer = new Consumer(false);
+        Consumer consumer = new Consumer();
         Thread thread = new Thread(consumer);
         thread.start();
 
