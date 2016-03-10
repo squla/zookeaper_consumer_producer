@@ -1,4 +1,5 @@
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.Shell;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
@@ -11,9 +12,17 @@ import java.util.List;
 public class Consumer implements Watcher, Runnable {
     private Logger _log = Logger.getLogger(Consumer.class);
     private ZooKeeper _zookeeperClient;
+    private Boolean remove;
+    private Integer mutex = 1;
 
     public Consumer() throws Exception {
         _zookeeperClient = new ZooKeeper("localhost:2181", 3000, this);
+        remove = true;
+    }
+
+    public Consumer(Boolean remove) throws Exception{
+        this();
+        this.remove = remove;
     }
 
 
@@ -21,7 +30,7 @@ public class Consumer implements Watcher, Runnable {
         return _zookeeperClient.getChildren("/tasks", this);
     }
 
-    private Integer mutex = 1;
+
 
     public void process(WatchedEvent watchedEvent) {
         if (watchedEvent.getType() == Event.EventType.NodeChildrenChanged) {
@@ -31,7 +40,9 @@ public class Consumer implements Watcher, Runnable {
                 _log.error("Consumer process throw Exception: " + e.getMessage());
             }
             synchronized (mutex) {
-                mutex.notify();
+                if(remove) {
+                    mutex.notify();
+                }
             }
         }
     }
@@ -48,10 +59,9 @@ public class Consumer implements Watcher, Runnable {
                         for (String s : children) {
                             _log.info("Consume task: " + s + " data: " + new String(_zookeeperClient.getData("/tasks/" + s, false, null)));
                             _zookeeperClient.delete("/tasks/" + s, 0);
-                            Thread.sleep(100);
+                            Thread.sleep(1000);
                         }
                     }
-                    Thread.sleep(300);
                 }
             }
         } catch (Exception e) {
@@ -61,7 +71,7 @@ public class Consumer implements Watcher, Runnable {
 
 
     public static void main(String args[]) throws Exception {
-        Consumer consumer = new Consumer();
+        Consumer consumer = new Consumer(false);
         Thread thread = new Thread(consumer);
         thread.start();
 
